@@ -11,3 +11,6 @@ heimdall.db-wal
 heimdall.db-shm
 demo/sandbox/
 /.env
+
+# macOS
+.DS_Store
