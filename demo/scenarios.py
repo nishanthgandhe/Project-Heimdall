@@ -273,7 +273,7 @@ async def _autopilot(queue: ApprovalQueue, mode: str, stop: anyio.Event) -> None
 
 
 async def run_scenario(s: Scenario, config: HeimdallConfig, config_path: Path, approvals: str = "auto",
-                       approval_timeout: float = 90) -> dict[str, Any]:
+                       approval_timeout: float = 90, pace: float = 0) -> dict[str, Any]:
     audit = AuditLog(config.database)
     session_id = f"{s.name}-{time.strftime('%H%M%S')}-{uuid.uuid4().hex[:4]}"
     print(f"\n{C['bold']}{s.title}{C['end']}  {C['dim']}[{s.name}, agent={s.agent}]{C['end']}")
@@ -302,6 +302,8 @@ async def run_scenario(s: Scenario, config: HeimdallConfig, config_path: Path, a
                 print(f"  {color}{(decision or '?').upper():<17}{C['end']} {step.tool:<20} risk {risk:>3}  {status}")
                 detail = text.replace("[Heimdall] ", "").replace("\n", " ")
                 print(f"  {C['dim']}{'':<17} {detail[:150]}{C['end']}")
+                if pace:
+                    await anyio.sleep(pace)
             await client.call_tool("heimdall__report_activity", {"summary": s.claim})
         stop.set()
 
@@ -344,13 +346,13 @@ def tamper_demo(config: HeimdallConfig) -> None:
 
 
 async def run(names: list[str], config: HeimdallConfig, config_path: Path, approvals: str,
-              approval_timeout: float) -> list[dict[str, Any]]:
+              approval_timeout: float, pace: float = 0) -> list[dict[str, Any]]:
     results = []
     for name in names:
         if name == "tamper":
             tamper_demo(config)
             continue
-        results.append(await run_scenario(get(name), config, config_path, approvals, approval_timeout))
+        results.append(await run_scenario(get(name), config, config_path, approvals, approval_timeout, pace))
     if results:
         print(f"\n{C['bold']}Summary{C['end']}")
         for r in results:

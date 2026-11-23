@@ -3,6 +3,8 @@
 **An action-control gateway and tamper-evident audit trail for AI agents.**
 Team Fishbowl, CSCE 477/703, Texas A&M.
 
+**Demo video (1:48, no audio):** [media/Heimdall_demo.mp4](media/Heimdall_demo.mp4) shows real agents going through Heimdall: data theft with PII redaction, prompt injection and honeytokens, shell guards, a poisoned tool and payment limits, screen control with live approvals, and tamper detection.
+
 AI agents now call tools (MCP servers, APIs, databases, files) faster than people can check what they are doing. Heimdall sits between an agent and every tool it can reach. Each call is checked against policy before it runs. Heimdall then allows it, restricts it, holds it for human approval, or blocks it. Every attempt is written to a hash-chained log that the agent can't touch. Because Heimdall sees the actions directly, it can tell when an agent's own account of its work doesn't match what actually happened.
 
 ```
@@ -57,6 +59,8 @@ heimdall demo human-approval --approvals dashboard   # terminal 2, then click Ap
 heimdall demo tamper                                 # edit the log behind Heimdall's back; watch it get caught
 heimdall reset -y                                    # wipe the log and sandbox for a fresh run
 ```
+
+**Recording your own demo** (for example with [Recordly](https://github.com/webadderallorg/recordly)): open the dashboard at `http://127.0.0.1:8477/?refresh=500` so it updates twice a second, then run `heimdall demo screen-control --approvals dashboard --pace 1.5`. `--pace` pauses after each step so viewers can follow, and `--approvals dashboard` lets you click Approve and Deny on camera.
 
 Run the tests with `pytest` (96 tests, including full MCP client → proxy → server integration tests and at least one test per guard).
 

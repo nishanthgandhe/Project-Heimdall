@@ -126,6 +126,8 @@ class HeimdallProxy:
         """Pin the tool definition and look for poisoning (hidden instructions in its description)."""
         canonical = f"{server}.{tool.name}"
         info = self.gateway.tools.register(canonical, tool.description or "", tool.input_schema)
+        if not info["new"] and info.get("previous") == info["status"]:
+            return  # already flagged when first seen; don't re-alert on every session
         if info["status"] == "poisoned":
             self.gateway.alert("critical", "tool_integrity",
                                f"tool {canonical} looks poisoned and was hidden: {'; '.join(info['reasons'][:2])}",

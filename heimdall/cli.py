@@ -62,7 +62,7 @@ def cmd_demo(args: argparse.Namespace) -> None:
     if not (cfg.base_dir / "demo" / "sandbox").exists():
         reset_sandbox()
     anyio.run(scenarios.run, names, cfg, Path(args.config or "heimdall.yaml").resolve(), args.approvals,
-              cfg.approval_timeout if args.approval_timeout else 90.0)
+              cfg.approval_timeout if args.approval_timeout else 90.0, args.pace)
 
 
 def cmd_agent(args: argparse.Namespace) -> None:
@@ -145,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--approvals", choices=["auto", "dashboard", "deny"], default="auto",
                    help="auto: a scripted reviewer decides; dashboard: you decide in the browser; deny: deny all")
     s.add_argument("--approval-timeout", type=float, default=None)
+    s.add_argument("--pace", type=float, default=0, help="seconds to pause after each step (for live demos and recording)")
     s.set_defaults(func=cmd_demo)
 
     s = sub.add_parser("agent", parents=[common], help="run a real LLM agent through Heimdall (any provider)")

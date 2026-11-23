@@ -372,5 +372,7 @@ $("claim-form").addEventListener("submit", async (e) => {
 
 refreshSessions();
 refresh();
-setInterval(refresh, 2000);
+// ?refresh=500 makes the page update faster (handy when screen-recording a demo).
+const REFRESH_MS = Math.max(250, Number(new URLSearchParams(location.search).get("refresh")) || 2000);
+setInterval(refresh, REFRESH_MS);
 setInterval(refreshSessions, 6000);

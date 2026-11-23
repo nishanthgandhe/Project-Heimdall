@@ -198,7 +198,7 @@ class ToolRegistry:
                 status = "poisoned" if reasons else row["status"]
             conn.execute("UPDATE tool_pins SET current_hash = ?, description = ?, status = ?, reasons = ?, last_seen = ?"
                          " WHERE tool = ?", (h, description, status, json.dumps(reasons), now, tool))
-            return {"tool": tool, "status": status, "reasons": reasons, "new": False}
+            return {"tool": tool, "status": status, "reasons": reasons, "new": False, "previous": row["status"]}
 
     def status(self, tool: str) -> tuple[str, list[str]] | None:
         try:
