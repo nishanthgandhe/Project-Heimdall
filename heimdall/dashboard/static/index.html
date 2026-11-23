@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heimdall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M3 24 Q16 4 29 24" fill="none" stroke="var(--allow)" stroke-width="2.2"/>
+        <path d="M6 24 Q16 8 26 24" fill="none" stroke="var(--restrict)" stroke-width="2.2"/>
+        <path d="M9 24 Q16 12 23 24" fill="none" stroke="var(--approve)" stroke-width="2.2"/>
+        <path d="M12 24 Q16 16 20 24" fill="none" stroke="var(--block)" stroke-width="2.2"/>
+      </svg>
+      <h1>Heimdall</h1>
+    </div>
+    <label class="session-pick">
+      <span>Session</span>
+      <select id="session"><option value="">All sessions</option></select>
+    </label>
+    <button id="chain" class="chain" type="button" title="Re-check the audit trail">Checking audit trail…</button>
+  </header>
+
+  <section id="screen-banner" class="screen-banner" hidden aria-live="assertive">
+    <div class="screen-text">
+      <h2><i class="pulse" aria-hidden="true"></i><span id="screen-title"></span></h2>
+      <p id="screen-detail"></p>
+    </div>
+    <div class="screen-actions" id="screen-actions"></div>
+  </section>
+
+  <section class="bridge-wrap" aria-label="Every action on the bridge, oldest to newest">
+    <div class="bridge-head">
+      <h2 id="bridge-title">The bridge</h2>
+      <ul class="legend">
+        <li><i class="dot allow"></i>Allowed</li>
+        <li><i class="dot restrict"></i>Restricted</li>
+        <li><i class="dot approve"></i>Needed approval</li>
+        <li><i class="dot block"></i>Blocked or denied</li>
+      </ul>
+    </div>
+    <div id="bridge" class="bridge"><p class="empty">No agent has crossed yet. Start a demo with <code>heimdall demo</code>.</p></div>
+    <dl class="stats" id="stats"></dl>
+  </section>
+
+  <section id="approvals" class="approvals" hidden aria-live="polite">
+    <h2>Waiting for your decision</h2>
+    <div id="approval-list"></div>
+  </section>
+
+  <main class="grid">
+    <section class="feed">
+      <div class="feed-head">
+        <h2>Activity</h2>
+        <label class="filter"><input type="checkbox" id="only-flagged"> Only show blocked, restricted or approval actions</label>
+      </div>
+      <table>
+        <thead><tr><th>Time</th><th>Agent</th><th>Tool and target</th><th>Risk</th><th>Outcome</th></tr></thead>
+        <tbody id="feed"></tbody>
+      </table>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Alerts</h2>
+          <button type="button" id="notify" class="link-btn">Get desktop notifications</button>
+        </div>
+        <div id="alerts"><p class="empty">No alerts yet.</p></div>
+      </section>
+      <section class="panel">
+        <h2>Agent sessions</h2>
+        <div id="sessions"><p class="empty">No sessions yet.</p></div>
+      </section>
+      <section class="panel" id="tools-panel" hidden>
+        <h2>Tools that need review</h2>
+        <div id="tools"></div>
+      </section>
+      <section class="panel">
+        <h2>Screen activity</h2>
+        <div id="screen-timeline"><p class="empty">No agent has touched the screen.</p></div>
+      </section>
+      <section class="panel">
+        <h2>Check what an agent says it did</h2>
+        <form id="claim-form">
+          <textarea id="claim-text" rows="3" required placeholder="Paste the agent's summary, e.g. “I only read the Q3 report and summarized it.”"></textarea>
+          <button type="submit">Check claim</button>
+          <p class="hint" id="claim-hint">Uses the selected session.</p>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>Claim checks</h2>
+        <div id="reports"><p class="empty">No claims checked yet.</p></div>
+      </section>
+      <section class="panel" id="chain-panel">
+        <h2>Audit trail</h2>
+        <div id="chain-detail"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

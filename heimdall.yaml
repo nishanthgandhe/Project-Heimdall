@@ -1,0 +1,172 @@
+# Project Heimdall -- policy configuration
+#
+# Paths may use {root} (this file's folder) and {python} (the current Python).
+
+database: heimdall.db          # audit log, approvals, sessions, tool pins (keep agents away from this file)
+require_purpose: true          # agents must say WHY for each call (missing purpose adds risk)
+approval_timeout: 120          # seconds to wait for a human before denying by default
+hide_unauthorized_tools: false # true = agents don't even see tools they aren't allowed to use
+
+risk:
+  approve_threshold: 50        # score >= this needs human sign-off
+  block_threshold: 85          # score >= this is blocked outright
+  max_actions_per_minute: 30   # faster than this adds risk
+
+trusted_domains:
+  - fishbowl.example
+
+# Anything matching these in tool arguments counts as touching Heimdall's own
+# files (adds heavy risk on top of the rules below).
+protected_paths:
+  - '(?i)heimdall\.(db|ya?ml)'
+  - '(?i)audit[_-]?log'
+
+# Optional: pin categories for tools whose names are ambiguous. Otherwise
+# Heimdall guesses from the name: list, read, query, network, screen, write,
+# send, execute, financial, admin, delete.
+tool_categories:
+  db.execute: write
+  comms.http_post: send
+  computer.*: screen
+  web.summarize_page: network
+
+# ----------------------------------------------------------------- guards
+# Each guard checks every call, on any MCP server. Set enabled: false to turn one off.
+guards:
+  quarantine_after_blocks: 8   # this many blocked/denied actions stops the whole session
+
+  screen:                      # computer use: screenshots, clicks, typing, apps, clipboard
+    require_grant: true        # first screen action in a session needs a person to approve
+    grant_minutes: 10          # how long an approval lasts before asking again
+    blocked_apps: [Terminal, iTerm, System Settings, System Preferences, Keychain Access, 1Password,
+                   Activity Monitor, Script Editor]
+    allowed_apps: []           # empty = any app that isn't blocked
+    approve_each: ['*clipboard*']   # these screen tools need approval every single time
+
+  shell:                       # dangerous commands are blocked, risky ones need approval
+    extra_block: []            # your own regexes
+    extra_approve: []
+
+  network:
+    block_private_addresses: true   # localhost, 10.x, 192.168.x, cloud metadata (SSRF)
+    blocked_domains: [pastebin.com, paste.example, transfer.sh, webhook.site, requestbin.com, ngrok.io,
+                      ngrok-free.app, exfil-drop.example]
+    allowed_domains: []        # if set, fetching anything else needs approval
+    approve_downloads: true    # executables (.sh .pkg .exe .dmg ...) need approval
+
+  injection:
+    taint_session: true        # after planted instructions are seen, consequential actions need approval
+
+  data_flow: {}                # sensitive values the agent has seen can't be sent out
+
+  canary:                      # honeytokens: nobody legitimate ever uses these
+    tokens: [AKIAHEIMDALLCANARY7Q]
+    decoy_paths: ['(?i)admin_passwords_old']
+
+  evasion: {}                  # retrying a blocked target another way needs approval
+
+  financial:
+    approve_over: 0            # every payment needs a person
+    block_over: 5000           # anything larger is blocked outright
+
+  admin: {}                    # permission / settings / install tools always need approval
+
+  budget:
+    defaults: {max_actions: 500, max_outbound: 25, max_result_kb: 4096}
+    # active_hours: "08:00-20:00"   # outside these hours, actions need approval
+
+  tool_integrity: {}           # hide poisoned tools; changed tool definitions need re-approval
+
+alerts:
+  webhook_url: ""              # Slack / Discord incoming-webhook URL for warning + critical alerts
+
+# ----------------------------------------------------------------- agents
+# Step 2 of the workflow: an agent may ONLY use tools listed in allow_tools.
+agents:
+  research-agent:
+    description: Reads documents, data and web pages, writes summaries. Should never change or export anything.
+    allow_tools: [files.list_files, files.read_file, db.query, comms.send_email, web.fetch_url]
+    max_actions_per_minute: 20
+    budgets: {max_outbound: 10}
+
+  ops-agent:
+    description: Maintenance agent with broad access, including a shell and payments.
+    allow_tools: [files.*, db.*, comms.send_email, shell.*, web.*, payments.*]
+    deny_tools: [comms.http_post]
+
+  desktop-agent:
+    description: A computer-use agent that operates desktop apps.
+    allow_tools: [computer.*, files.read_file]
+
+  llm-agent:
+    description: The optional real-LLM demo agent.
+    allow_tools: [files.list_files, files.read_file, db.query, comms.send_email, web.fetch_url]
+
+  claude-desktop:
+    description: Claude Desktop (or any MCP client) connected through the proxy.
+    allow_tools: [files.*, db.query, comms.*, web.*, computer.*, shell.*]
+
+# ----------------------------------------------------------------- rules
+# Every matching rule contributes a decision; the most severe one wins
+# (allow < restrict < require_approval < block). match_args keys are
+# argument names, "*" (any argument) or "purpose".
+rules:
+  - name: protect-audit-trail
+    description: logs and audit records are append-only; agents may not edit or delete them
+    tools: [files.write_file, files.delete_file]
+    match_args: {path: '(?i)(^|/)logs/|audit|heimdall'}
+    decision: block
+
+  - name: block-secret-files
+    description: credential and secret files are off-limits to agents
+    tools: ['files.*']
+    match_args: {path: '(?i)secret|\.env\b|credential|id_rsa|\.pem$'}
+    decision: block
+
+  - name: block-secret-files-in-commands
+    description: the same secret files are off-limits through the shell
+    tools: ['shell.*']
+    match_args: {'*': '(?i)secret|\.env\b|credential|id_rsa|\.pem\b'}
+    decision: block
+
+  - name: block-pii-outbound
+    description: outbound messages may not contain SSNs or card numbers
+    tools: ['comms.*', 'payments.*']
+    match_args: {'*': '\b\d{3}-\d{2}-\d{4}\b|\b(?:\d[ -]?){13,16}\b'}
+    decision: block
+
+  - name: external-email-needs-approval
+    description: email to anyone outside fishbowl.example needs a human to sign off
+    tools: [comms.send_email]
+    match_args: {to: '^(?!.*@fishbowl\.example\s*$)'}
+    decision: require_approval
+
+  - name: external-post-needs-approval
+    description: posting data to an external URL needs a human to sign off
+    tools: [comms.http_post]
+    decision: require_approval
+
+  - name: destructive-sql-needs-approval
+    description: data-destroying SQL needs a human to sign off
+    tools: [db.execute]
+    match_args: {sql: '(?i)\b(drop|truncate|delete|alter|update)\b'}
+    decision: require_approval
+
+  - name: redact-customer-pii
+    description: customer queries are allowed but personal data is masked in the result
+    tools: [db.query]
+    match_args: {sql: '(?i)\bcustomers\b'}
+    decision: restrict
+    restrictions: {redact: true, max_result_chars: 4000}
+
+# ----------------------------------------------------------------- downstream MCP servers
+# The proxy starts these and exposes their tools as <server>__<tool>.
+# All demo servers are simulated: nothing touches your real screen, shell, network or money.
+servers:
+  files:    {command: '{python}', args: ['{root}/demo/servers/files_server.py']}
+  db:       {command: '{python}', args: ['{root}/demo/servers/db_server.py']}
+  comms:    {command: '{python}', args: ['{root}/demo/servers/comms_server.py']}
+  web:      {command: '{python}', args: ['{root}/demo/servers/web_server.py']}
+  shell:    {command: '{python}', args: ['{root}/demo/servers/shell_server.py']}
+  computer: {command: '{python}', args: ['{root}/demo/servers/computer_server.py']}
+  payments: {command: '{python}', args: ['{root}/demo/servers/payments_server.py']}

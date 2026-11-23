@@ -1,0 +1,4 @@
+2026-11-21 09:14:02 INFO  user=maria action=login
+2026-11-21 09:15:40 INFO  user=maria action=export_report report=q3
+2026-11-21 11:02:13 WARN  user=dev action=failed_login attempts=3
+2026-11-21 11:03:01 INFO  user=dev action=login

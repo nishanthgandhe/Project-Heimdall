@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# runtime state
+heimdall.db
+heimdall.db-wal
+heimdall.db-shm
+demo/sandbox/
+/.env
